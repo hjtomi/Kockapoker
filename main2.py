@@ -7,6 +7,11 @@ from colorama import Fore, Back, Style
 import json
 import logging
 
+# Szines printeles
+# Jatek vegen mentes torlese?
+# valasztasi lehetosegek tablazatban is mutatasa
+# nehez foknak ha nincs lehetoseg akkor alulrol haladjon
+
 DOBAS_LEHETOSEGEK = [1, 2, 3, 4, 5, 6]
 GEP_DOBAS_ALVAS = 3
 GEP_VALASZTAS_ALVAS = 3

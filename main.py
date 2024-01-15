@@ -6,8 +6,6 @@ from pandas import DataFrame
 from colorama import Fore, Back, Style
 import json
 
-# Akkor van bug amikor a gep dobas animacio kozben lepek ki
-
 dobas_lehetosegek = [1, 2, 3, 4, 5, 6]
 
 

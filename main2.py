@@ -5,7 +5,6 @@ import time
 from pandas import DataFrame
 from colorama import Fore, Back, Style
 import json
-import logging
 
 # Szines printeles
 # Jatek vegen mentes torlese?
@@ -157,7 +156,6 @@ def jatek():
 
         ures_szabalyosak = ures_szabalyos_helyek(uresek, szabalyosak)
         ures_szabalyos_kalkulacioi = {ures_szabalyos: kalkulaciok[ures_szabalyos] for ures_szabalyos in ures_szabalyosak}
-        logging.info(ures_szabalyos_kalkulacioi)
 
         if statusz.split(' ')[0] == 'jatekos':
             jatekos_valasztas()

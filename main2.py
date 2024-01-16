@@ -11,6 +11,7 @@ import logging
 # Jatek vegen mentes torlese?
 # valasztasi lehetosegek tablazatban is mutatasa
 # nehez foknak ha nincs lehetoseg akkor alulrol haladjon
+# Atalakitas osztalyba
 
 DOBAS_LEHETOSEGEK = [1, 2, 3, 4, 5, 6]
 GEP_DOBAS_ALVAS = 3
@@ -34,6 +35,8 @@ def jatek():
         return os.path.isfile('mentes.json')
 
     def mentes():
+        """Elmenti a jatekot egy mentes.json fileba."""
+
         adatok = {
             'statusz': statusz,
             'tabla': tabla,
@@ -47,7 +50,7 @@ def jatek():
             json.dump(adatok, file)
 
     def mentes_betoltes() -> Tuple[str, dict, List[int], str, str, str]:
-        """Betolti a mentest."""
+        """Betolti a mentest a mentes.json filebol."""
 
         with open('mentes.json') as file:
             mentes = json.load(file)
@@ -71,7 +74,7 @@ def jatek():
         return valasz
 
     def adatbekeres() -> Tuple[str, str, str]:
-        """Bekeri az adatokat."""
+        """Bekeri a nev, nehezseg es animacio adatokat."""
 
         nev = input('Felhasznalonev: ')
         nehezseg = valasztas('Konnyu vagy nehez jatek (k/n): ', opciok=['k', 'n'])
@@ -80,7 +83,7 @@ def jatek():
         return nev, nehezseg, animacio
 
     def dobas() -> List[int]:
-        """Visszaad 5 random szamot."""
+        """Visszaad 5 random szamot es kirajzolja az allast."""
 
         szamlista = random.choices(DOBAS_LEHETOSEGEK, k=5)
         kirajzolas(szamlista)
@@ -96,6 +99,8 @@ def jatek():
         return dobas()
 
     def hely_valasztas(szamlista):
+        """A helyvalasztasert felelos logika"""
+
         def ures_helyek() -> List[str]:
             """Megnezi melyik helyek szabadok az epp soronlevo jatekosnak."""
 
@@ -278,10 +283,14 @@ def jatek():
         print(statusz)
         print(str_szamlista)
 
-    def eredmeny_file_van():
+    def eredmeny_file_van() -> bool:
+        """Megnezi, hogy van-e eredmeny file."""
+
         return os.path.isfile('eredmenyek.txt')
 
     def eredmenykalkulacio():
+        """Kiaklkulalja a jatek vegeredmenyet. Ha dontetlen akkor ki is irja."""
+
         gep_pontja = sum(tabla['gep'].values())
         jatekos_pontja = sum(tabla['jatekos'].values())
 
@@ -341,6 +350,9 @@ def jatek():
         return gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult
 
     def eredmenyhirdetes(gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult):
+        """Kirajzolja az eredmeny file-t is.
+        Ha az eredmeny nem dontetlen, kihirdeti a gyoztest."""
+
         kirajzolas()
         print('\n')
 

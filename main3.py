@@ -6,6 +6,8 @@ from colorama import Fore, Back, Style
 import json
 from tablastring import TABLASTRING
 from unidecode import unidecode
+from inquirer import list_input
+import re
 
 # Szines printeles
 # Valasztasi lehetosegek tablazatban is mutatasa - tabla kirajzolas atalakitasa
@@ -50,8 +52,8 @@ class Kockapoker:
         }
         self.szamlista = [0, 0, 0, 0, 0]
         self.nev = 'debug_ertek'
-        self.nehezseg = 'n'
-        self.animacio = 'i'
+        self.nehezseg = 'nehéz'
+        self.animacio = 'igen'
 
         self.most_beirt = ''
         self.lehetosegek_ertekei = ''
@@ -63,7 +65,7 @@ class Kockapoker:
                 pass
 
         if self.mentes_van():
-            if self.valasztas(szoveg='Mentes betoltese? (i/n) ', opciok=['i', 'n']) == 'i':
+            if self.valasztas(szoveg='Mentés betöltése?', opciok=['igen', 'nem']) == 'igen':
                 self.mentes_betoltes()
                 self.mentest_betoltott = True
 
@@ -72,7 +74,7 @@ class Kockapoker:
 
         while not self.tabla_tele():
             if self.statusz == 'gep dob':
-                self.dobas() if self.animacio == 'n' else self.dobas_animacioval()
+                self.dobas() if self.animacio == 'nem' else self.dobas_animacioval()
                 self.kirajzolas()
                 self.statusz = 'gep valaszt'
                 self.mentes()
@@ -86,7 +88,7 @@ class Kockapoker:
                 time.sleep(self.GEP_VALASZTAS_ALVAS)
 
             if self.statusz == 'jatekos dob':
-                self.dobas() if self.animacio == 'n' else self.dobas_animacioval()
+                self.dobas() if self.animacio == 'nem' else self.dobas_animacioval()
                 self.kirajzolas()
                 self.statusz = 'jatekos valaszt'
                 self.mentes()
@@ -156,18 +158,21 @@ class Kockapoker:
     def valasztas(szoveg: str, opciok: list):
         """Egyszerusites az olyan inputok beirasara ami bizonyos valaszokat fogad el."""
 
-        valasz = 'valami hulyeseg'
-        while valasz not in opciok:
-            valasz = unidecode(input(szoveg)).lower()
+        # valasz = 'valami hulyeseg'
+        # while valasz not in opciok:
+        #     valasz = unidecode(input(szoveg)).lower()
+        #
+        # return valasz
 
-        return valasz
+        valasz = list_input(szoveg, choices=opciok)
+        return unidecode(valasz)
 
     def adatbekeres(self):
         """Bekeri a nev, nehezseg es animacio adatokat."""
 
         self.nev = input('Felhasznalonev: ')
-        self.nehezseg = self.valasztas('Konnyu vagy nehez jatek (k/n): ', opciok=['k', 'n'])
-        self.animacio = self.valasztas('Szeretnel dobas animaciot? (i/n): ', opciok=['i', 'n'])
+        self.nehezseg = self.valasztas('Könnyű vagy nehéz játék?', opciok=['könnyű', 'nehéz'])
+        self.animacio = self.valasztas('Szeretnél dobás animációt?', opciok=['igen', 'nem'])
 
     def dobas(self):
         """Visszaad 5 random szamot es kirajzolja az allast."""
@@ -224,8 +229,10 @@ class Kockapoker:
 
         def jatekos_valasztas():
             self.kirajzolas(kalkulaciokkal=True, ures_szabalyos_kalkulacioi=ures_szabalyos_kalkulacioi)
-            dontes = self.valasztas(f'Melyik helyre szeretned beirni?\n', ures_szabalyosak + ['quit'])
-            if dontes == 'quit':
+            dontes = self.valasztas(f'Melyik helyre szeretned beirni?', ures_szabalyosak + [Fore.RED + 'kilépés' + Style.RESET_ALL])
+            reaesc = re.compile(r'\x1b[^m]*m')
+            new_text = reaesc.sub('', dontes)
+            if new_text == 'kilepes':
                 quit()
             self.tabla['jatekos'][dontes] = ures_szabalyos_kalkulacioi[dontes]
             self.most_beirt = self.JATEKOS_FORMATOK[self.MEZOK.index(dontes)]
@@ -252,13 +259,14 @@ class Kockapoker:
         ures_szabalyosak = ures_szabalyos_helyek(uresek, szabalyosak)
         ures_szabalyos_kalkulacioi = {ures_szabalyos: kalkulaciok[ures_szabalyos] for ures_szabalyos in ures_szabalyosak}
 
+        print(self.nehezseg)
         if self.statusz.split(' ')[0] == 'jatekos':
             jatekos_valasztas()
 
-        elif self.nehezseg == 'k':
+        elif self.nehezseg == 'konnyu':
             konnyu_gep_valaszt()
 
-        elif self.nehezseg == 'n':
+        elif self.nehezseg == 'nehez':
             nehez_gep_valaszt()
 
         self.kirajzolas()

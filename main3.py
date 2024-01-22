@@ -182,7 +182,7 @@ class Kockapoker:
     def dobas_animacioval(self):
         """Dobas animacio logika."""
 
-        for i in range(30, 1, -1):
+        for i in range(20, 1, -1):
             self.dobas()
             self.kirajzolas()
             time.sleep(1/i)
@@ -429,6 +429,7 @@ class Kockapoker:
             vesztes_pontja = gep_pontja
 
         elif gep_pontja > jatekos_pontja:
+            print('ciklusban')
             gyoztes = 'szamitogep'
             gyoztes_nev = 'szamitogep'
             gyoztes_pontja = gep_pontja
@@ -484,7 +485,7 @@ class Kockapoker:
             print('Te nyertel!')
             print(f'Az eredmeny {vesztes_pontja} - {gyoztes_pontja}')
 
-        elif gyoztes == 'gep':
+        elif gyoztes == 'szamitogep':
             print('Vesztettel!')
             print(f'Az eredmeny {gyoztes_pontja} - {vesztes_pontja}')
 

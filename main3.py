@@ -2,17 +2,12 @@ import random
 from typing import List
 import os
 import time
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 import json
 from tablastring import TABLASTRING
 from unidecode import unidecode
 from inquirer import list_input
 import re
-
-# Szines printeles
-# Valasztasi lehetosegek tablazatban is mutatasa - tabla kirajzolas atalakitasa
-
-# Ha van mas lehetoseg a tetszoleges mezot mellozi
 
 
 class Kockapoker:
@@ -429,7 +424,6 @@ class Kockapoker:
             vesztes_pontja = gep_pontja
 
         elif gep_pontja > jatekos_pontja:
-            print('ciklusban')
             gyoztes = 'szamitogep'
             gyoztes_nev = 'szamitogep'
             gyoztes_pontja = gep_pontja
@@ -444,7 +438,7 @@ class Kockapoker:
         if gyoztes_pontja == 0:
             self.kirajzolas()
 
-            print(f'Az eredmeny dontetlen {jatekos_pontja}-ponttal.\n')
+            print(f'Az eredmény döntetlen {jatekos_pontja}-ponttal.\n')
             print(eddigi_sorok)
 
         elif not eddigi_sorok:
@@ -482,17 +476,17 @@ class Kockapoker:
         print('\n')
 
         if gyoztes == 'jatekos':
-            print('Te nyertel!')
-            print(f'Az eredmeny {vesztes_pontja} - {gyoztes_pontja}')
+            print('Te nyertél!')
+            print(f'Az eredmény {vesztes_pontja} - {gyoztes_pontja}')
 
         elif gyoztes == 'szamitogep':
-            print('Vesztettel!')
-            print(f'Az eredmeny {gyoztes_pontja} - {vesztes_pontja}')
+            print('Vesztettél!')
+            print(f'Az eredmény {gyoztes_pontja} - {vesztes_pontja}')
 
         if fileba_kerult:
-            print('Bekerult a legjobb 10 koze\n')
+            print('Bekerült a legjobb 10 közé\n')
         else:
-            print('Nem kerult a legjobb 10 koze\n')
+            print('Nem került a legjobb 10 közé\n')
 
         with open('eredmenyek.txt') as file:
             print(file.read())

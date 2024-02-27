@@ -1,179 +1,299 @@
 import random
-from typing import List, Tuple
+from typing import List
 import os
 import time
-from pandas import DataFrame
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 import json
+from tablastring import TABLASTRING
+from unidecode import unidecode
+from inquirer import list_input
+import re
 
-dobas_lehetosegek = [1, 2, 3, 4, 5, 6]
 
+class Kockapoker:
+    def __init__(self):
+        self.DOBAS_LEHETOSEGEK = [1, 2, 3, 4, 5, 6]
+        self.GEP_DOBAS_ALVAS = 3
+        self.GEP_VALASZTAS_ALVAS = 3
+        self.JATEKOS_VALASZTAS_ALVAS = 1
+        self.GEP_FORMATOK = 'gt gp gd gkp gkip gf gks gns gnp'.split()
+        self.JATEKOS_FORMATOK = 'jt jp jd jkp jkip jf jks jns jnp'.split()
+        self.MEZOK = 'tetszoleges,par,drill,ket par,kis poker,full,kis sor,nagy sor,nagy poker'.split(',')
 
-def jatek():
-    def adatbekeres() -> Tuple[str, str, str]:
-        nev = input("Ird be a neved: ")
+        self.statusz = 'gep dob'
+        self.tabla = {
+            'gep': {
+                'tetszoleges': None,
+                'par': None,
+                'drill': None,
+                'ket par': None,
+                'kis poker': None,
+                'full': None,
+                'kis sor': None,
+                'nagy sor': None,
+                'nagy poker': None
+            },
+            'jatekos': {
+                'tetszoleges': None,
+                'par': None,
+                'drill': None,
+                'ket par': None,
+                'kis poker': None,
+                'full': None,
+                'kis sor': None,
+                'nagy sor': None,
+                'nagy poker': None
+            },
+        }
+        self.szamlista = [0, 0, 0, 0, 0]
+        self.nev = 'debug_ertek'
+        self.nehezseg = 'nehéz'
+        self.animacio = 'igen'
 
-        nehezseg = ''
-        while nehezseg != 'k' and nehezseg != 'n':
-            nehezseg = input("Konnyu vagy nehez jatek (k/n): ")
+        self.most_beirt = ''
+        self.lehetosegek_ertekei = ''
 
-        animacio = ''
-        while animacio != 'i' and animacio != 'n':
-            animacio = input("Legyenek animaciok, igen vagy nem (i/n) ")
+        self.mentest_betoltott = False
 
-        return nev, nehezseg, animacio
+        if not self.eredmeny_file_van():
+            with open('eredmenyek.txt', 'w') as _:
+                pass
 
-    def dobas():
-        tablastring = DataFrame(tabla).to_string().replace('-1', '')
+        if self.mentes_van():
+            if self.valasztas(szoveg='Mentés betöltése?', opciok=['igen', 'nem']) == 'igen':
+                self.mentes_betoltes()
+                self.mentest_betoltott = True
 
-        if animacio == 'i':
-            for i in range(30, 1, -1):
-                print(tablastring + '\n')
-                print(statusz)
-                szamlista = random.choices(dobas_lehetosegek, k=5)
-                print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
-                time.sleep(1/i)
-                os.system('cls')
+        if not self.mentest_betoltott:
+            self.adatbekeres()
 
-        os.system('cls')
-        print(tablastring + '\n')
+        while not self.tabla_tele():
+            if self.statusz == 'gep dob':
+                self.dobas() if self.animacio == 'nem' else self.dobas_animacioval()
+                self.kirajzolas()
+                self.statusz = 'gep valaszt'
+                self.mentes()
+                time.sleep(self.GEP_DOBAS_ALVAS)
 
-        if statusz == 'gep dob':
-            print('gep dobasa')
-        elif statusz == 'jatekos dob':
-            print('jatekos dobasa')
+            if self.statusz == 'gep valaszt':
+                self.kirajzolas()
+                self.hely_valasztas(self.szamlista)
+                self.statusz = 'jatekos dob'
+                self.mentes()
+                time.sleep(self.GEP_VALASZTAS_ALVAS)
 
-        szamlista = random.choices(dobas_lehetosegek, k=5)
-        print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
+            if self.statusz == 'jatekos dob':
+                self.dobas() if self.animacio == 'nem' else self.dobas_animacioval()
+                self.kirajzolas()
+                self.statusz = 'jatekos valaszt'
+                self.mentes()
 
-        if statusz == 'gep dob':
-            mentes_adatok = {
-                'statusz': 'valasztas',
-                'tabla': tabla,
-                'szamlista': szamlista,
-                'kor_szama': kor_szama + elozo_korok_szama,
-                'kijon': 'gep',
-                'nev': nev,
-                'nehezseg': nehezseg,
-                'animacio': animacio
-            }
-        elif statusz == 'jatekos dob':
-            mentes_adatok = {
-                'statusz': 'valasztas',
-                'tabla': tabla,
-                'szamlista': szamlista,
-                'kor_szama': kor_szama + elozo_korok_szama,
-                'kijon': 'jatekos',
-                'nev': nev,
-                'nehezseg': nehezseg,
-                'animacio': animacio,
-            }
+            if self.statusz == 'jatekos valaszt':
+                self.kirajzolas()
+                self.hely_valasztas(self.szamlista)
+                self.statusz = 'gep dob'
+                self.mentes()
+                time.sleep(self.JATEKOS_VALASZTAS_ALVAS)
 
-        with open('mentes.json', 'w') as file:
-            json.dump(mentes_adatok, file)
+        gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult = self.eredmenykalkulacio()
+        self.eredmenyhirdetes(gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult)
 
-        time.sleep(2)
-        return szamlista
+    @staticmethod
+    def eredmeny_file_van() -> bool:
+        """Megnezi, hogy van-e eredmeny file."""
 
-    def valasztas(szamlista):
-        os.system('cls')
-        if statusz == 'gep valaszt':
-            if nehezseg == 'k':
-                lehetseges_dontesek = {key: kalkulacio(key, szamlista) for key, value in tabla['gep'].items() if
-                                       value == -1 and kalkulacio(key, szamlista) > 0}
-                if not lehetseges_dontesek:
-                    lehetseges_dontesek = {key: kalkulacio(key, szamlista) for key, value in tabla['gep'].items() if
-                                           value == -1}
+        return os.path.isfile('eredmenyek.txt')
 
-                tabla['gep'][tuple(lehetseges_dontesek.keys())[0]] = kalkulacio(tuple(lehetseges_dontesek.keys())[0], szamlista)
+    @staticmethod
+    def mentes_van() -> bool:
+        """Megnezi, hogy van-e mentes file."""
 
-                print(DataFrame(tabla).to_string().replace('-1', '') + '\n')
-                print('gep dobasa')
-                print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
+        return os.path.isfile('mentes.json')
 
-            elif nehezseg == 'n':
-                szabad_mezok = [key for key, value in tabla['gep'].items() if value == -1]
-                kalkulaciok = [kalkulacio(szabad_mezo, szamlista) for szabad_mezo in szabad_mezok]
-                legnagyobb_index = kalkulaciok.index(max(kalkulaciok))
+    def tabla_tele(self) -> bool:
+        """Megnezi, hogy tele van-e a tabla."""
 
-                tabla['gep'][szabad_mezok[legnagyobb_index]] = kalkulaciok[legnagyobb_index]
+        for (gep_ertek, jatekos_ertek) in zip(self.tabla['gep'].values(), self.tabla['jatekos'].values()):
+            if gep_ertek == None or jatekos_ertek == None:
+                return False
 
-                print(DataFrame(tabla).to_string().replace('-1', '') + '\n')
-                print('gep dobasa')
-                print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
+        return True
 
-        elif statusz == 'jatekos valaszt':
-            print(DataFrame(tabla).to_string().replace('-1', '') + '\n')
-            print('jatekos dobasa')
-            print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
+    def mentes(self):
+        """Elmenti a jatekot egy mentes.json fileba."""
 
-            lehetseges_dontesek = {key: kalkulacio(key, szamlista) for key, value in tabla['jatekos'].items() if value == -1 and kalkulacio(key, szamlista) > 0}
-            if not lehetseges_dontesek:
-                lehetseges_dontesek = {key: kalkulacio(key, szamlista) for key, value in tabla['jatekos'].items() if value == -1}
-            dontes = ''
-            while dontes not in lehetseges_dontesek:
-                dontes = input(f'Melyik mezot szeretned kitolteni {lehetseges_dontesek}\n')
-                if dontes == 'quit':
-                    quit()
-
-            tabla['jatekos'][dontes] = kalkulacio(dontes, szamlista)
-
-            os.system('cls')
-            print(DataFrame(tabla).to_string().replace('-1', '') + '\n')
-            print('jatekos dobasa')
-            print(' '.join(map(str, szamlista)) + '  =>  ' + str(sum(szamlista)))
-
-        if statusz == 'gep valaszt':
-            mentes_adatok = {
-                'statusz': 'dobas',
-                'tabla': tabla,
-                'kor_szama': kor_szama + elozo_korok_szama,
-                'kijon': 'jatekos',
-                'nev': nev,
-                'nehezseg': nehezseg,
-                'animacio': animacio,
-            }
-        elif statusz == 'jatekos valaszt':
-            mentes_adatok = {
-                'statusz': 'bobas',
-                'tabla': tabla,
-                'kor_szama': kor_szama + elozo_korok_szama + 1,
-                'kijon': 'gep',
-                'nev': nev,
-                'nehezseg': nehezseg,
-                'animacio': animacio,
-            }
+        adatok = {
+            'statusz': self.statusz,
+            'tabla': self.tabla,
+            'szamlista': self.szamlista,
+            'nev': self.nev,
+            'nehezseg': self.nehezseg,
+            'animacio': self.animacio,
+            'most_beirt': self.most_beirt,
+        }
 
         with open('mentes.json', 'w') as file:
-            json.dump(mentes_adatok, file)
+            json.dump(adatok, file)
 
-        time.sleep(2.5)
+    def mentes_betoltes(self):
+        """Betolti a mentest a mentes.json filebol."""
 
-    def kalkulacio(elnevezes, szamlista: List[int]) -> int:
+        with open('mentes.json') as file:
+            mentes = json.load(file)
+
+        self.statusz = mentes['statusz']
+        self.tabla = mentes['tabla']
+        self.szamlista = mentes['szamlista']
+        self.nev = mentes['nev']
+        self.nehezseg = mentes['nehezseg']
+        self.animacio = mentes['animacio']
+        self.most_beirt = mentes['most_beirt']
+
+    @staticmethod
+    def valasztas(szoveg: str, opciok: list):
+        """Egyszerusites az olyan inputok beirasara ami bizonyos valaszokat fogad el."""
+
+        # valasz = 'valami hulyeseg'
+        # while valasz not in opciok:
+        #     valasz = unidecode(input(szoveg)).lower()
+        #
+        # return valasz
+
+        valasz = list_input(szoveg, choices=opciok)
+        return unidecode(valasz)
+
+    def adatbekeres(self):
+        """Bekeri a nev, nehezseg es animacio adatokat."""
+
+        self.nev = input('Felhasznalonev: ')
+        self.nehezseg = self.valasztas('Könnyű vagy nehéz játék?', opciok=['könnyű', 'nehéz'])
+        self.animacio = self.valasztas('Szeretnél dobás animációt?', opciok=['igen', 'nem'])
+
+    def dobas(self):
+        """Visszaad 5 random szamot es kirajzolja az allast."""
+
+        self.szamlista = random.choices(self.DOBAS_LEHETOSEGEK, k=5)
+
+    def dobas_animacioval(self):
+        """Dobas animacio logika."""
+
+        for i in range(20, 1, -1):
+            self.dobas()
+            self.kirajzolas()
+            time.sleep(1/i)
+
+        self.dobas()
+
+    def hely_valasztas(self, szamlista):
+        """A helyvalasztasert felelos logika"""
+
+        def ures_helyek() -> List[str]:
+            """Megnezi melyik helyek szabadok az epp soronlevo jatekosnak."""
+
+            uresek = []
+            for key, value in self.tabla[self.statusz.split(' ')[0]].items():
+                if value == None:
+                    uresek.append(key)
+
+            return uresek
+
+        def szabalyos_helyek(kalkulaciok) -> List[str]:
+            """Megnezi, hogy az ures helyek kozul melyikbe irhato a szamlista.
+            Ha egyikbe sem, akkor az osszeset visszaadja."""
+
+            szabalyosak = []
+            for key, value in kalkulaciok.items():
+                if value > 0:
+                    szabalyosak.append(key)
+
+            return szabalyosak
+
+        def ures_szabalyos_helyek(uresek, szabalyosak) -> List[str]:
+            """Kiszamitja, hogy az ures es a szabalyos helyeknel mi az atfedes.
+            Ha nincs akkor az osszes ureset visszaadja."""
+
+            ures_szabalyosak = []
+            for szabalyos in szabalyosak:
+                if szabalyos in uresek:
+                    ures_szabalyosak.append(szabalyos)
+
+            if ures_szabalyosak:
+                return ures_szabalyosak
+
+            return uresek
+
+        def jatekos_valasztas():
+            self.kirajzolas(kalkulaciokkal=True, ures_szabalyos_kalkulacioi=ures_szabalyos_kalkulacioi)
+            dontes = self.valasztas(f'Melyik helyre szeretned beirni?', ures_szabalyosak + [Fore.RED + 'kilépés' + Style.RESET_ALL])
+            reaesc = re.compile(r'\x1b[^m]*m')
+            new_text = reaesc.sub('', dontes)
+            if new_text == 'kilepes':
+                quit()
+            self.tabla['jatekos'][dontes] = ures_szabalyos_kalkulacioi[dontes]
+            self.most_beirt = self.JATEKOS_FORMATOK[self.MEZOK.index(dontes)]
+
+        def konnyu_gep_valaszt():
+            dontes = tuple(ures_szabalyos_kalkulacioi.keys())[0]
+            self.tabla['gep'][dontes] = tuple(ures_szabalyos_kalkulacioi.values())[0]
+            self.most_beirt = self.GEP_FORMATOK[self.MEZOK.index(dontes)]
+
+        def nehez_gep_valaszt():
+            legtobb_pont = max(ures_szabalyos_kalkulacioi.values())
+            forditott_ures_szabalyos_kalkulacioi = dict(reversed(list(ures_szabalyos_kalkulacioi.items())))
+            for key, value in forditott_ures_szabalyos_kalkulacioi.items():
+                if value == legtobb_pont:
+                    self.tabla['gep'][key] = value
+                    self.most_beirt = self.GEP_FORMATOK[self.MEZOK.index(key)]
+                    break
+
+        kalkulaciok = self.kalkulacio(szamlista)
+
+        uresek = ures_helyek()
+        szabalyosak = szabalyos_helyek(kalkulaciok)
+
+        ures_szabalyosak = ures_szabalyos_helyek(uresek, szabalyosak)
+        ures_szabalyos_kalkulacioi = {ures_szabalyos: kalkulaciok[ures_szabalyos] for ures_szabalyos in ures_szabalyosak}
+
+        print(self.nehezseg)
+        if self.statusz.split(' ')[0] == 'jatekos':
+            jatekos_valasztas()
+
+        elif self.nehezseg == 'konnyu':
+            konnyu_gep_valaszt()
+
+        elif self.nehezseg == 'nehez':
+            nehez_gep_valaszt()
+
+        self.kirajzolas()
+
+    @staticmethod
+    def kalkulacio(szamlista: List[int]) -> dict:
+        """Kiszamitja az osszes mezore, hogy mennyi pontot erne."""
+
         szamlista = sorted(szamlista, reverse=True)
 
-        if elnevezes == 'tetszoleges':
+        def tetszoleges():
             return sum(szamlista)
 
-        elif elnevezes == 'par':
+        def par():
             for i, szam in enumerate(szamlista):
                 try:
-                    if szam == szamlista[i+1]:
+                    if szam == szamlista[i + 1]:
                         return szam * 2
 
                 except IndexError:
                     return 0
 
-        elif elnevezes == 'drill':
+        def drill():
             for i, szam in enumerate(szamlista):
                 try:
-                    if szam == szamlista[i+1] == szamlista[i+2]:
+                    if szam == szamlista[i + 1] == szamlista[i + 2]:
                         return szam * 3
 
                 except IndexError:
                     return 0
 
-        elif elnevezes == 'ket par':
+        def ket_par():
             talalat = False
             szamok = []
             for i, szam in enumerate(szamlista):
@@ -188,7 +308,7 @@ def jatek():
                     continue
 
                 try:
-                    if szam == szamlista[i+1]:
+                    if szam == szamlista[i + 1]:
                         szamok.append(szam)
                         talalat = True
 
@@ -197,242 +317,179 @@ def jatek():
 
             return 0
 
-        elif elnevezes == 'kis poker':
+        def kis_poker():
             for i, szam in enumerate(szamlista):
                 try:
-                    if szam == szamlista[i+1] == szamlista[i+2] == szamlista[i+3]:
+                    if szam == szamlista[i + 1] == szamlista[i + 2] == szamlista[i + 3]:
                         return szam * 4
 
                 except IndexError:
                     return 0
 
-        elif elnevezes == 'full':
-            if (szamlista[0] == szamlista[1] == szamlista[2] and szamlista[3] == szamlista[4]) or (szamlista[0] == szamlista[1] and szamlista[2] == szamlista[3] == szamlista[4]):
+        def full():
+            if (szamlista[0] == szamlista[1] == szamlista[2] and szamlista[3] == szamlista[4]) or (
+                    szamlista[0] == szamlista[1] and szamlista[2] == szamlista[3] == szamlista[4]):
                 return sum(szamlista)
 
             return 0
 
-        elif elnevezes == 'kis sor':
+        def kis_sor():
             if szamlista == [5, 4, 3, 2, 1]:
                 return 15
 
             return 0
 
-        elif elnevezes == 'nagy sor':
+        def nagy_sor():
             if szamlista == [6, 5, 4, 3, 2]:
                 return 20
 
             return 0
 
-        elif elnevezes == 'nagy poker':
+        def nagy_poker():
             if len(set(szamlista)) == 1:
                 return 50
 
             return 0
 
-    tabla = {
-        'gep': {
-            'tetszoleges': -1,
-            'par': -1,
-            'drill': -1,
-            'ket par': -1,
-            'kis poker': -1,
-            'full': -1,
-            'kis sor': -1,
-            'nagy sor': -1,
-            'nagy poker': -1
-        },
-        'jatekos': {
-            'tetszoleges': -1,
-            'par': -1,
-            'drill': -1,
-            'ket par': -1,
-            'kis poker': -1,
-            'full': -1,
-            'kis sor': -1,
-            'nagy sor': -1,
-            'nagy poker': -1
-        },
-    }
-    try:
-        with open('eredmenyek.txt', 'r') as file:
-            pass
+        kalkulacio = {
+            'tetszoleges': tetszoleges(),
+            'par': par(),
+            'drill': drill(),
+            'ket par': ket_par(),
+            'kis poker': kis_poker(),
+            'full': full(),
+            'kis sor': kis_sor(),
+            'nagy sor': nagy_sor(),
+            'nagy poker': nagy_poker()
+        }
 
-    except FileNotFoundError:
-        with open('eredmenyek.txt', 'w') as file:
-            pass
+        return kalkulacio
 
-    valasztasnal_indul = False
-    kijon = ''
-    elozo_korok_szama = 0
-    try:
-        with open('mentes.json', 'r') as file:
-            pass
+    def kirajzolas(self, kalkulaciokkal=False, ures_szabalyos_kalkulacioi=None):
+        """Kirajzolja a jatekot."""
 
-    except FileNotFoundError:
-        korok_szama = 9
-        nev, nehezseg, animacio = adatbekeres()
+        os.system('cls')
 
-    else:
-        dontes = ''
-        while dontes != 'i' and dontes != 'n':
-            dontes = input('Mentett jatek folytatasa (i/n) ')
-            if dontes == 'i':
-                with open('mentes.json', 'r') as file:
-                    mentes = json.load(file)
+        tablastring = TABLASTRING
+        tablamap = {
+            'gt': self.tabla['gep']['tetszoleges'],
+            'gp': self.tabla['gep']['par'],
+            'gd': self.tabla['gep']['drill'],
+            'gkp': self.tabla['gep']['ket par'],
+            'gkip': self.tabla['gep']['kis poker'],
+            'gf': self.tabla['gep']['full'],
+            'gks': self.tabla['gep']['kis sor'],
+            'gns': self.tabla['gep']['nagy sor'],
+            'gnp': self.tabla['gep']['nagy poker'],
 
-                tabla = mentes['tabla']
-                korok_szama = 9 - mentes['kor_szama']
-                elozo_korok_szama = mentes['kor_szama']
-                kijon = mentes['kijon']
-                nev = mentes['nev']
-                nehezseg = mentes['nehezseg']
-                animacio = mentes['animacio']
-                if mentes['statusz'] == 'valasztas':
-                    szamlista = mentes['szamlista']
-                    valasztasnal_indul = True
+            'jt': self.tabla['jatekos']['tetszoleges'],
+            'jp': self.tabla['jatekos']['par'],
+            'jd': self.tabla['jatekos']['drill'],
+            'jkp': self.tabla['jatekos']['ket par'],
+            'jkip': self.tabla['jatekos']['kis poker'],
+            'jf': self.tabla['jatekos']['full'],
+            'jks': self.tabla['jatekos']['kis sor'],
+            'jns': self.tabla['jatekos']['nagy sor'],
+            'jnp': self.tabla['jatekos']['nagy poker'],
+        }
 
-            elif dontes == 'n':
-                korok_szama = 9
-                os.remove('mentes.json')
-                nev, nehezseg, animacio = adatbekeres()
+        if self.most_beirt:
+            tablamap[self.most_beirt] = Fore.CYAN + str(tablamap[self.most_beirt]) + Style.RESET_ALL
 
-    for kor_szama in range(korok_szama):
-        if kijon == 'gep':
-            if valasztasnal_indul:
-                statusz = 'gep valaszt'
-                valasztas(szamlista)
+        if kalkulaciokkal:
+            for key, value in ures_szabalyos_kalkulacioi.items():
+                mezo_nev = self.JATEKOS_FORMATOK[self.MEZOK.index(key)]
+                tablamap[mezo_nev] = Fore.YELLOW + str(value) + Style.RESET_ALL
 
-                statusz = 'jatekos dob'
-                szamlista = dobas()
-                statusz = 'jatekos valaszt'
-                valasztas(szamlista)
+        str_szamlista = ' '.join(map(str, self.szamlista))
 
-            else:
-                statusz = 'gep dob'
-                szamlista = dobas()
-                statusz = 'gep valaszt'
-                valasztas(szamlista)
+        print(tablastring.format(**tablamap).replace('None', ''))
+        print(self.statusz)
+        print(str_szamlista)
 
-                statusz = 'jatekos dob'
-                szamlista = dobas()
-                statusz = 'jatekos valaszt'
-                valasztas(szamlista)
+    def eredmenykalkulacio(self):
+        """Kiaklkulalja a jatek vegeredmenyet. Ha dontetlen akkor ki is irja."""
 
-        elif kijon == 'jatekos':
-            if valasztasnal_indul:
-                statusz = 'jatekos valaszt'
-                valasztas(szamlista)
+        gep_pontja = sum(self.tabla['gep'].values())
+        jatekos_pontja = sum(self.tabla['jatekos'].values())
 
-            else:
-                statusz = 'jatekos dob'
-                szamlista = dobas()
-                statusz = 'jatekos valaszt'
-                valasztas(szamlista)
+        gyoztes = ''
+        gyoztes_nev = ''
+        gyoztes_pontja = 0
+        vesztes_pontja = 0
+        if jatekos_pontja > gep_pontja:
+            gyoztes = 'jatekos'
+            gyoztes_nev = self.nev
+            gyoztes_pontja = jatekos_pontja
+            vesztes_pontja = gep_pontja
 
-        else:
-            statusz = 'gep dob'
-            szamlista = dobas()
-            statusz = 'gep valaszt'
-            valasztas(szamlista)
+        elif gep_pontja > jatekos_pontja:
+            gyoztes = 'szamitogep'
+            gyoztes_nev = 'szamitogep'
+            gyoztes_pontja = gep_pontja
+            vesztes_pontja = jatekos_pontja
 
-            statusz = 'jatekos dob'
-            szamlista = dobas()
-            statusz = 'jatekos valaszt'
-            valasztas(szamlista)
+        uj_sor = f'{gyoztes_nev} {gyoztes_pontja}\n'
 
-        kijon = ''
+        with open('eredmenyek.txt', 'r+') as file:
+            eddigi_sorok = file.readlines()
 
-    os.system('cls')
-    print(DataFrame(tabla).to_string().replace('-1', '') + '\n')
+        fileba_kerult = False
+        if gyoztes_pontja == 0:
+            self.kirajzolas()
 
-    gep_pontja = sum(tabla['gep'].values())
-    jatekos_pontja = sum(tabla['jatekos'].values())
+            print(f'Az eredmény döntetlen {jatekos_pontja}-ponttal.\n')
+            print(eddigi_sorok)
 
-    with open('eredmenyek.txt', 'r', encoding='UTF-8') as file:
-        sorok = file.readlines()
-
-    fileba_kerult = False
-    if gep_pontja < jatekos_pontja:
-        print('Te nyertel!\nAz eredmeny ' + str(gep_pontja) + ' - ' + Fore.CYAN + str(jatekos_pontja) + Style.RESET_ALL + '\n')
-
-        if not sorok:
-            with open('eredmenyek.txt', 'w', encoding='UTF-8') as file:
-                file.write(f'{nev} {jatekos_pontja}\n')
-
+        elif not eddigi_sorok:
+            with open('eredmenyek.txt', 'w') as file:
+                file.write(uj_sor)
             fileba_kerult = True
 
         else:
             nagyobb_eredmeny = False
-            for sor_szam, pont in enumerate(map(lambda x: int(x.split(' ')[1]), sorok)):
-                if jatekos_pontja > pont:
-                    sorok.insert(sor_szam, f'{nev} {jatekos_pontja}\n')
-
-                    with open('eredmenyek.txt', 'w') as file:
-                        file.writelines(sorok)
-
-                    fileba_kerult = True
-
+            for i, pont in enumerate(map(lambda x: int(x.split(' ')[1]), eddigi_sorok)):
+                if gyoztes_pontja > pont:
+                    eddigi_sorok.insert(i, uj_sor)
                     nagyobb_eredmeny = True
+                    fileba_kerult = True
 
                     break
 
-            if not nagyobb_eredmeny and len(sorok) < 10:
-                with open('eredmenyek.txt', 'a') as file:
-                    file.write(f'{nev} {jatekos_pontja}\n')
+            if nagyobb_eredmeny:
+                with open('eredmenyek.txt', 'w') as file:
+                    file.writelines(eddigi_sorok[:10])
 
+            elif not nagyobb_eredmeny and len(eddigi_sorok) < 10:
+                eddigi_sorok.append(uj_sor)
+                with open('eredmenyek.txt', 'w') as file:
+                    file.writelines(eddigi_sorok)
                 fileba_kerult = True
 
-    elif jatekos_pontja < gep_pontja:
-        print('Gep nyert!\nAz eredmeny ' + Fore.CYAN + str(gep_pontja) + Style.RESET_ALL + ' - ' + str(jatekos_pontja) + '\n')
+        return gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult
 
-        if not sorok:
-            with open('eredmenyek.txt', 'w', encoding='UTF-8') as file:
-                file.write(f'szamitogep {gep_pontja}\n')
+    def eredmenyhirdetes(self, gyoztes, gyoztes_pontja, vesztes_pontja, fileba_kerult):
+        """Kirajzolja az eredmeny file-t is.
+        Ha az eredmeny nem dontetlen, kihirdeti a gyoztest."""
 
-            fileba_kerult = True
+        self.kirajzolas()
+        print('\n')
 
+        if gyoztes == 'jatekos':
+            print('Te nyertél!')
+            print(f'Az eredmény {vesztes_pontja} - {gyoztes_pontja}')
+
+        elif gyoztes == 'szamitogep':
+            print('Vesztettél!')
+            print(f'Az eredmény {gyoztes_pontja} - {vesztes_pontja}')
+
+        if fileba_kerult:
+            print('Bekerült a legjobb 10 közé\n')
         else:
-            nagyobb_eredmeny = False
-            for sor_szam, pont in enumerate(map(lambda x: int(x.split(' ')[1]), sorok)):
-                if gep_pontja > pont:
-                    sorok.insert(sor_szam, f'szamitogep {gep_pontja}\n')
+            print('Nem került a legjobb 10 közé\n')
 
-                    with open('eredmenyek.txt', 'w') as file:
-                        file.writelines(sorok)
-
-                    fileba_kerult = True
-
-                    nagyobb_eredmeny = True
-
-                    break
-
-            if not nagyobb_eredmeny and len(sorok) < 10:
-                with open('eredmenyek.txt', 'a') as file:
-                    file.write(f'szamitogep {gep_pontja}\n')
-
-                fileba_kerult = True
-
-    else:
-        print('Dontetlen!\nAz eredmeny ' + str(gep_pontja) + ' - ' + str(jatekos_pontja) + '\n')
-
-    with open('eredmenyek.txt', 'r') as file:
-        sorok = file.readlines()
-
-    if len(sorok) > 10:
-        with open('eredmenyek.txt', 'w') as file:
-            file.writelines(sorok[:-1])
-
-    with open('eredmenyek.txt', 'r') as file:
-        sorok = file.readlines()
-
-    print(''.join(sorok))
-    if fileba_kerult:
-        print('Felkerult a legjobb 10 koze!')
-    else:
-        print('Nem kerult fel a legjobb 10 koze')
-
-    os.remove('mentes.json')
+        with open('eredmenyek.txt') as file:
+            print(file.read())
 
 
-jatek()
+Kockapoker()
